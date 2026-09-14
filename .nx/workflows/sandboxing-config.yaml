@@ -1,0 +1,16 @@
+# Workspace-wide exclusions. These apply to every task's IO snapshot.
+exclude-reads:
+  - apps/shop-e2e/test-output/**
+exclude-writes:
+  - apps/shop-e2e/test-output/**
+
+task-exclusions:
+  - project: '@org/shop-e2e'
+    exclude-reads:
+      - apps/shop/dist/**
+      - apps/shop/out-tsc/**
+      - apps/shop-e2e/out-tsc/**
+      - apps/api/dist/**
+    exclude-writes:
+      - apps/shop-e2e/test-output/**/*.log
+      - apps/shop-e2e/dist/.playwright/**/*.log
