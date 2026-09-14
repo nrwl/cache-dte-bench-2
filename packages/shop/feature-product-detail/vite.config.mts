@@ -1,0 +1,26 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig(() => ({
+  root: import.meta.dirname,
+  cacheDir: '../../../node_modules/.vite/packages/shop/feature-product-detail',
+  plugins: [react()],
+  test: {
+    name: '@org/feature-product-detail',
+    watch: false,
+    globals: true,
+    environment: 'jsdom',
+    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    setupFiles: ['./src/test-setup.ts', '../../../tools/test-delay/setup.mjs'],
+    reporters: ['default'],
+    // Run spec files one at a time. Nx owns concurrency via --parallel, so the
+    // CPU burn in the setup file really does get a single core to itself.
+    // (poolOptions.forks.maxForks does NOT do this on Vitest 4.)
+    fileParallelism: false,
+    coverage: {
+      reportsDirectory: './test-output/vitest/coverage',
+      provider: 'v8' as const,
+      include: ['src/**/*.{ts,tsx}'],
+    },
+  },
+}));
