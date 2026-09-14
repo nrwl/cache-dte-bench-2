@@ -1,0 +1,4 @@
+exclude-reads:
+  - apps/shop-e2e/test-output/**
+exclude-writes:
+  - apps/shop-e2e/test-output/**
