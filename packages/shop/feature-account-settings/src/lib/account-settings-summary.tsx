@@ -35,7 +35,7 @@ export function AccountSettingsSummary({
         size="sm"
         items={[
           { id: 'items', label: 'Items', value: items.length },
-          { id: 'amount', label: 'Amount', value: totals.amount },
+          { id: 'amount', label: 'Amount owed', value: totals.amount },
           { id: 'active', label: 'Active', value: totals.active },
           { id: 'pending', label: 'Pending', value: totals.pending },
         ]}
