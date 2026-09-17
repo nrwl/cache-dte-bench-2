@@ -7,16 +7,9 @@
   "nx": {
     "name": "@org/source",
     "targets": {
-      "validate-fast": {
-        "command": "node tools/validation/simulate-validation.mjs validate-fast 2",
-        "cache": true,
-        "inputs": [
-          "{workspaceRoot}/tools/validation/**/*"
-        ]
-      },
-      "validate-slow": {
-        "command": "node tools/validation/simulate-validation.mjs validate-slow 8",
-        "cache": true,
+      "validate": {
+        "command": "node tools/validation/simulate-validation.mjs validate 2",
+        "cache": false,
         "inputs": [
           "{workspaceRoot}/tools/validation/**/*"
         ]

@@ -39,8 +39,7 @@ jobs:
           pids=()
           npx nx-cloud record -- nx format:check & pids+=($!)
           npx nx-cloud record -- nx sync:check & pids+=($!)
-          npx nx validate-fast --no-agents & pids+=($!)
-          npx nx validate-slow --no-agents & pids+=($!)
+          npx nx validate --no-agents & pids+=($!)
           npx nx affected -t build typecheck lint test e2e-ci & pids+=($!)
 
           status=0
