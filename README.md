@@ -4,8 +4,8 @@ Recent changes to the Nx Cloud platform significantly increase the cache hit rat
 reduce compute, while also making CI much faster. This benchmark demonstrates the impact
 and explains where the savings come from.
 
-Across a realistic mix of pull requests, the platform verifies changes **10.5x faster** and
-uses **2.7x less compute** than the same workspace running on remote cache alone.
+Across a realistic mix of pull requests, the platform verifies changes **9.2x faster** and
+uses **2.1x less compute** than the same workspace running on remote cache alone.
 
 ## The workspace
 
@@ -43,32 +43,7 @@ Note that real repositories often have many more dependencies between tasks, for
 many buildable libraries. Nx Cloud does even better in those cases, because it freely moves
 tasks between agents to get optimal performance.
 
-### Simulated load
-
-Unit tests model a realistic Vitest profile rather than pure sleep. Each of the 1,111 spec
-files costs a fixed-work CPU burn (`UNIT_TEST_CPU_SECONDS`, default 5s on one GitHub
-Actions vCPU) plus idle wait (`UNIT_TEST_SLEEP_MS`, default 7300ms), about 12.3s per file.
-Spec files run one at a time, so Nx owns all concurrency and each burn genuinely gets one
-core.
-
-Each e2e test is padded to `E2E_TEST_DURATION_MS` (default 25000ms) and then burns
-`E2E_TEST_CPU_SECONDS` (default 2s) of real compute, about 27s per test, of which roughly
-7% scales with hardware. That matches real Playwright runs being mostly wait-bound.
-
-In both cases the compute and the wait are interleaved across ten rounds of
-compute-then-sleep rather than one long burn followed by one long sleep. The totals are
-unchanged; the shape just matches a real test run more closely.
-
-The CPU half runs a fixed number of iterations (`tools/test-delay/burn.mjs`) rather than
-spinning for a fixed duration, so faster runners finish it sooner. A `setTimeout` would
-take the same wall time on any machine and would hide exactly the hardware differences this
-benchmark exists to measure.
-
-The burn is a serial dependent integer chain that allocates nothing, so it tracks clock
-speed and multiply latency rather than allocator, memory bandwidth and GC performance.
-Those have changed little across CPU generations, which keeps old and new runners closer
-together and makes results less noisy. `UNITS_PER_SECOND` is calibrated for one GitHub
-Actions vCPU; run `node tools/test-delay/calibrate.mjs` on a runner to re-measure it.
+Everything is supposed to represent a mid-size monorepo used to build an application or a platform.
 
 ## The three scenarios
 
@@ -79,7 +54,7 @@ Every measurement below covers the same three types of change:
 - **Feature change** — a single feature library changes (a typical pull request).
 
 Two numbers are reported for each. **Verification time** is the wall-clock time a
-developer waits. **Compute** is the total machine time consumed across every VM or agent,
+developer waits. **Verification compute** is the total machine time consumed across every VM or agent,
 which is what the run actually costs.
 
 ## Baseline: remote cache only
@@ -89,21 +64,22 @@ using only remote caching, without Nx agents, Nx Ultracache or distributed task 
 has the same performance characteristics as a DIY caching solution, and it uses
 one VM per task type: build, typecheck, lint, test, e2e and validate.
 
-| Scenario       | Verification time | Compute   |
-| -------------- | ----------------- | --------- |
-| Full rebuild   | 1h 7m 11s         | 2h 6m 15s |
-| Large change   | 42m 21s           | 1h 12m 9s |
-| Feature change | 42m 21s           | 46m 43s   |
+| Scenario       | Verification time | Verification compute |
+| -------------- | ----------------- | -------------------- |
+| Full rebuild   | 58m 22s           | 1h 59m 42s           |
+| Large change   | 44m 59s           | 1h 15m 52s           |
+| Feature change | 45m 10s           | 49m 53s              |
 
 ## Nx Cloud
 
-| Scenario       | Verification time | Compute    | vs baseline                    |
-| -------------- | ----------------- | ---------- | ------------------------------ |
-| Full rebuild   | 11m 45s           | 1h 12m 17s | 5.7x faster, 43% less compute  |
-| Large change   | 6m 27s            | 35m 2s     | 6.6x faster, 51% less compute  |
-| Feature change | 3m 20s            | 14m 36s    | 12.7x faster, 69% less compute |
+| Scenario       | Verification time | Verification compute | vs baseline                    |
+| -------------- | ----------------- | -------------------- | ------------------------------ |
+| Full rebuild   | 14m 0s            | 1h 27m 34s           | 4.2x faster, 27% less compute  |
+| Large change   | 7m 39s            | 44m 26s              | 5.9x faster, 41% less compute  |
+| Feature change | 4m 4s             | 21m 22s              | 11.1x faster, 57% less compute |
 
-A typical feature pull request is verified in a little over three minutes.
+Compute is the main job plus its six agents. A typical feature pull request is verified in
+about four minutes.
 
 ## Total compute
 
@@ -111,26 +87,28 @@ The overall saving depends on how often each kind of change occurs, and that rat
 between repositories. This comparison assumes 80% of CI executions are feature changes,
 17% are large changes, and 3% are full rebuilds.
 
-| Weighted average  | Baseline | Nx Cloud |
-| ----------------- | -------- | -------- |
-| Verification time | 43m 6s   | 4m 7s    |
-| Compute           | 53m 26s  | 19m 48s  |
+| Weighted average     | Baseline | Nx Cloud |
+| -------------------- | -------- | -------- |
+| Verification time    | 45m 32s  | 4m 58s   |
+| Verification compute | 56m 24s  | 27m 16s  |
 
-That is **10.5x faster** verification using **2.7x less compute** (a 63% reduction).
+That is **9.2x faster** verification using **2.1x less compute** (a 52% reduction).
 
 It is certainly possible to make the DIY solution faster, but doing so costs more compute.
+It's also very hard to optimize the Feature Change scenario in the DIY case to come anywhere
+near 4m 4s.
 
 ## How did we achieve this?
 
 Two core mechanisms produce these savings:
 
 - Ultracache
-- Task distribution with dynamic packing
+- Task distribution with dynamic compute packing
 
 **Ultracache.** Nx Cloud instruments CI executions to learn what each task reads and
 writes, down to every single file. That is far more precise than a conservative declaration
 of everything a task might read. Combined with splitting tests into individual targets, it
-makes each test independently cacheable, which drastically lowers p75. Another benefit is
+makes each test independently cacheable, which drastically lowers p80. Another benefit is
 that the cache configuration is always correct. Ultracache is a more advanced version of the
 cache and requires Nx Cloud's task distribution.
 
@@ -143,16 +121,20 @@ The core intuition is that you pay for VM minutes, not for how hard the VM works
 result, most CI executions either have low average CPU and RAM usage, often 20% of
 capacity, or they run into out-of-memory errors and CPU throttling. That is what happens
 when you set the parallelism flag by hand. You experiment with it until performance is
-decent and CI is reasonably stable, and then the flag has to be retuned as the workspace
-changes. With Nx Cloud you set nothing. It knows what tasks run in what order, which tasks
+decent and CI is stable. As workspace evolve those settings often become outdated
+and got lowered.
+
+With Nx Cloud you set nothing. It knows what tasks run in what order, which tasks
 can coexist on the same agent, and how much each one consumes, so it assigns work
 dynamically to keep VMs near capacity, which means fewer VM minutes.
 
-A good analogy is moving house and packing your things into trucks. Traditional CI lets you
-set how many items go into each truck, which is the parallelism flag. Some items are huge,
-like sofas, and some are small, like plates, but it makes no difference: every truck gets the
-same five items. You might get lucky and fill a truck, or it might leave half empty. Nx Cloud
-loads each truck dynamically until it is full.
+This is a viz illustrating traditional CI vs Nx Cloud:
+
+![traditional](docs/images/traditional-ci.gif)
+
+Nx Cloud:
+
+![traditional](docs/images/nx-cloud.gif)
 
 You can see the task allocation across all agents during a full rebuild:
 
@@ -170,7 +152,38 @@ cache configuration tends to be a lot more conservative, while Ultracache always
 exactly what you need.
 
 A real workspace also has many more dependencies between tasks, and those tasks have very
-different CPU and RAM profiles. No matter how messy they are, Nx Cloud partitions them into
-smaller units, runs them in the right order, and packs VMs to their limits. Because this
-benchmark is artificial and uniform, that messiness is not there, so the baseline performs
-better here than it would in practice.
+different CPU and RAM profiles. So your parallelism setting has to account for the largest tasks in the set,
+which can easily consume 10x more RAM or CPU.
+
+No matter how messy tasks are, Nx Cloud partitions them into
+smaller units, runs them in the right order, and packs VMs to their limits.
+So the parallelism changes dynamically.
+
+Because this benchmark is artificial and uniform (to make it easier to understand),
+that messiness is not there, so the baseline performs better here than it would in practice.
+
+## Blacksmith numbers
+
+The pull requests in the baseline benchmark also ran on Blacksmith. A faster runner helps,
+but only where the work is CPU bound. The full rebuild drops from 58m 22s to 46m 37s, while
+the feature change barely moves, because its wall-clock time is dominated by an e2e VM that
+spends most of its time on IO.
+
+Nx Cloud against Blacksmith:
+
+| Scenario       | Blacksmith           | Nx Cloud            | Difference                     |
+| -------------- | -------------------- | ------------------- | ------------------------------ |
+| Full rebuild   | 46m 37s / 1h 38m 46s | 14m 0s / 1h 27m 34s | 3.3x faster, 11% less compute  |
+| Large change   | 43m 28s / 1h 6m 25s  | 7m 39s / 44m 26s    | 5.7x faster, 33% less compute  |
+| Feature change | 43m 29s / 47m 8s     | 4m 4s / 21m 22s     | 10.7x faster, 55% less compute |
+
+Each cell is verification time followed by compute. Weighted by the same 80/17/3 mix:
+
+| Weighted average  | Blacksmith | Nx Cloud |
+| ----------------- | ---------- | -------- |
+| Verification time | 43m 34s    | 4m 58s   |
+| Compute           | 51m 58s    | 27m 16s  |
+
+Nx Cloud is 8.8x faster than Blacksmith using 1.9x less compute.
+
+Note that both Blacksmith and Nx Cloud (both self-serve price and especially enterprise price) sell cheaper VM minutes so whatever savings you see vs GHA are a lot more drastic.
