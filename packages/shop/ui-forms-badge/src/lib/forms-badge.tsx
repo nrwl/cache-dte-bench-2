@@ -38,7 +38,7 @@ export function FormsBadge({
       <span className="ui-label">{label}</span>
       {formatted ? <span className="ui-value">{formatted}</span> : null}
       {children ? <div className="ui-content">{children}</div> : null}
-      <CoreChip label="Core Chip" value={value} tone={tone} size="sm" />
+      <CoreChip label="Breakdown" value={value} tone={tone} size="sm" />
     </div>
   );
 }
