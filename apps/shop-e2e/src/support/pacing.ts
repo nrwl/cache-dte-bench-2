@@ -1,36 +1,22 @@
 /**
- * Per-test pacing applied by the generated e2e specs.
+ * Per-test pacing for the generated e2e specs.
  *
- * Each generated spec records when its test started and calls padTo() at the
- * end. padTo() spends two budgets:
+ * Each spec records its start time and calls padTo() at the end, which spends
+ * two budgets interleaved across E2E_TEST_BLOCKS rounds: idle wait until
+ * E2E_TEST_DURATION_MS has elapsed since the test began, and
+ * E2E_TEST_CPU_SECONDS of fixed-work compute. Real browser work is absorbed by
+ * the wait, so a test costs the duration plus the burn.
  *
- *   1. Idle wait, until E2E_TEST_DURATION_MS (default 25000ms) has elapsed
- *      since the test began. This is a fixed DURATION, so it takes the same
- *      wall-clock time on every machine, and any real browser work the test
- *      already did is absorbed into it.
- *   2. E2E_TEST_CPU_SECONDS (default 2s) of real compute. This is a fixed
- *      amount of WORK, so faster hardware finishes it sooner.
+ * The wait budget is computed once, before any burning, so a fast machine
+ * cannot absorb its own saving and the compute stays additive.
  *
- * The two budgets are interleaved across E2E_TEST_BLOCKS (default 10) rounds of
- * compute-then-sleep, the same shape the unit test setup uses. The totals are
- * unchanged: a test takes 25s plus the burn, about 27s on a GHA vCPU and less on
- * faster silicon. The CPU portion stays
- * additive because the sleep budget is computed once, before any burning, so a
- * fast machine cannot absorb its own saving.
- *
- * Roughly 7% of each test is CPU, in line with real Playwright runs being
- * mostly wait-bound. Set E2E_TEST_DURATION_MS=0 and E2E_TEST_CPU_SECONDS=0 to
- * run at full speed locally.
+ * Set E2E_TEST_DURATION_MS=0 and E2E_TEST_CPU_SECONDS=0 to run at full speed.
  */
 export const DEFAULT_E2E_TEST_DURATION_MS = 25_000;
 export const DEFAULT_E2E_TEST_CPU_SECONDS = 2;
 export const DEFAULT_E2E_TEST_BLOCKS = 10;
 
-/**
- * Units that take roughly 1 second on a single GitHub Actions vCPU. Keep this
- * in sync with UNITS_PER_SECOND in tools/test-delay/burn.mjs; run
- * `node tools/test-delay/calibrate.mjs` on a runner to measure it.
- */
+/** Keep in sync with UNITS_PER_SECOND in tools/test-delay/burn.mjs. */
 export const UNITS_PER_SECOND = 150_000_000;
 
 function envNumber(name: string, fallback: number): number {
@@ -51,14 +37,8 @@ export function e2eTestCpuSeconds(): number {
 }
 
 /**
- * Fixed-work CPU burn. Mirrors burnCpu() in tools/test-delay/burn.mjs; it is
- * duplicated rather than imported so the e2e project stays self-contained and
- * typechecks without reaching outside its own rootDir.
- *
- * A serial dependent integer chain with no allocation: each iteration consumes
- * the previous one's output, so throughput tracks clock speed and multiply
- * latency rather than allocator, memory bandwidth and GC performance. That
- * keeps old and new hardware much closer together.
+ * Mirrors burnCpu() in tools/test-delay/burn.mjs. Duplicated rather than
+ * imported so the e2e project typechecks without reaching outside its rootDir.
  */
 export function burnCpu(units: number): number {
   let a = 1;
@@ -79,9 +59,7 @@ function sleep(ms: number): Promise<void> {
     : Promise.resolve();
 }
 
-/**
- * Spend the remaining idle budget and the CPU budget in alternating blocks.
- */
+/** Spend the wait budget and the CPU budget in alternating blocks. */
 export async function padTo(startedAt: number): Promise<void> {
   const blocks = Math.max(
     1,

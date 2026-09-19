@@ -1,37 +1,24 @@
 /**
- * Fixed-work CPU burn used to simulate real compute in the benchmark.
+ * Fixed-work CPU burn used to simulate compute in the benchmark.
  *
- * The important property is that this does a fixed amount of WORK, not work
- * for a fixed DURATION. A `setTimeout`, or a loop that spins until a deadline,
- * takes the same wall-clock time on every machine and therefore hides all
- * hardware differences. A fixed iteration count finishes sooner on faster
- * hardware, which is exactly the signal a runner benchmark needs.
+ * It does a fixed amount of WORK, not work for a fixed DURATION: a sleep or a
+ * spin-until-deadline takes the same wall time on every machine and hides the
+ * hardware differences this benchmark measures.
  *
- * The loop is a serial dependent integer chain: every iteration consumes the
- * previous iteration's output, and nothing is allocated. That keeps it bound by
- * clock speed and multiply latency, both of which have moved very little across
- * CPU generations, so old and new hardware land much closer together than they
- * would on an allocation-heavy loop. An earlier version built strings and
- * churned objects, which leaned on the allocator, memory bandwidth and the GC,
- * the three things that improved most between generations, and it also made
- * results noisier because of GC timing.
+ * The loop is a serial dependent integer chain with no allocation, so it is
+ * bound by clock speed and multiply latency rather than by the allocator and
+ * GC. Those have changed little across CPU generations, which keeps old and new
+ * hardware close together and results stable.
  */
 
 /**
- * Units that take roughly 1 second on a single GitHub Actions vCPU.
- *
- * This is an ESTIMATE for the dependent-chain loop below: an Apple M5 Pro
- * measures ~295M units/sec, and a GHA vCPU is roughly 2x slower on a
- * latency-bound integer chain. Run `node tools/test-delay/calibrate.mjs` ON A
- * RUNNER to get the real figure and replace this constant, or override it
- * per-run with UNIT_TEST_UNITS_PER_SECOND.
+ * Units that take roughly 1 second on one GitHub Actions vCPU. An estimate:
+ * run `node tools/test-delay/calibrate.mjs` on a runner to measure it, or
+ * override it with UNIT_TEST_UNITS_PER_SECOND.
  */
 export const UNITS_PER_SECOND = 150_000_000;
 
-/**
- * Burn `units` of CPU. Returns the accumulator so the work cannot be
- * optimized away.
- */
+/** Burn `units` of CPU. Returns the accumulator so it cannot be optimized away. */
 export function burnCpu(units) {
   let a = 1;
   let b = 0x9e3779b9;

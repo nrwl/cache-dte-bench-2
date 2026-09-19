@@ -1,20 +1,11 @@
 /**
- * Vitest setup file that models a realistic unit-test load for the benchmark.
+ * Vitest setup file that gives every spec file a realistic unit-test load.
  *
- * Vitest evaluates setup files once per test file, so each spec file costs:
- *   - UNIT_TEST_CPU_SECONDS (default 5s) of real, fixed-work CPU compute
- *   - UNIT_TEST_SLEEP_MS    (default 7.3s) of idle wait
- *
- * That is 12.3s per spec file across 1,111 spec files.
- *
- * The two are interleaved across UNIT_TEST_BLOCKS (default 10) rounds of
- * compute-then-sleep rather than one long burn followed by one long sleep. The
- * totals are identical; the shape is simply closer to a real Vitest run, which
- * alternates between CPU work (transpilation, module loading, jsdom setup) and
- * waiting on I/O.
- *
- * The CPU half is a fixed number of iterations, so faster hardware finishes it
- * sooner; the sleep half is hardware-independent by design.
+ * Vitest runs setup files once per spec file, so each one costs
+ * UNIT_TEST_CPU_SECONDS of fixed-work compute plus UNIT_TEST_SLEEP_MS of idle
+ * wait, interleaved across UNIT_TEST_BLOCKS rounds the way a real run
+ * alternates between CPU work and I/O. The compute scales with hardware, the
+ * sleep does not.
  *
  * Set UNIT_TEST_CPU_SECONDS=0 and UNIT_TEST_SLEEP_MS=0 to run at full speed.
  */

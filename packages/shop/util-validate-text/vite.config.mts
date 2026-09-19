@@ -12,9 +12,8 @@ export default defineConfig(() => ({
     setupFiles: ['../../../tools/test-delay/setup.mjs'],
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     reporters: ['default'],
-    // Run spec files one at a time. Nx owns concurrency via --parallel, so the
-    // CPU burn in the setup file really does get a single core to itself.
-    // (poolOptions.forks.maxForks does NOT do this on Vitest 4.)
+    // Spec files run one at a time so Nx owns concurrency and each CPU burn
+    // gets its own core.
     fileParallelism: false,
     coverage: {
       reportsDirectory: './test-output/vitest/coverage',
