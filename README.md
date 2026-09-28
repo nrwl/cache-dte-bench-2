@@ -72,11 +72,12 @@ one VM per task type: build, typecheck, lint, test, e2e and validate.
 
 ## Nx Cloud
 
-| Scenario       | Verification time | Verification compute | vs baseline                    |
-| -------------- | ----------------- | -------------------- | ------------------------------ |
-| Full rebuild   | 14m 0s            | 1h 27m 34s           | 4.2x faster, 27% less compute  |
-| Large change   | 7m 39s            | 44m 26s              | 5.9x faster, 41% less compute  |
-| Feature change | 4m 4s             | 21m 22s              | 11.1x faster, 57% less compute |
+| Scenario             | Verification time | Verification compute | vs baseline                       |
+| -------------------- | ----------------- | -------------------- | --------------------------------- |
+| Full rebuild         | 14m 0s            | 1h 27m 34s           | 4.2x faster, 27% less compute     |
+| Large change         | 7m 39s            | 44m 26s              | 5.9x faster, 41% less compute     |
+| Feature change       | 4m 4s             | 21m 22s              | 11.1x faster, 57% less compute    |
+| **Weighted average** | **4m 58s**        | **27m 16s**          | **9.2x faster, 52% less compute** |
 
 Compute is the main job plus its six agents. A typical feature pull request is verified in
 about four minutes.
@@ -171,11 +172,12 @@ spends most of its time on IO.
 
 Nx Cloud against Blacksmith:
 
-| Scenario       | Blacksmith           | Nx Cloud            | Difference                     |
-| -------------- | -------------------- | ------------------- | ------------------------------ |
-| Full rebuild   | 46m 37s / 1h 38m 46s | 14m 0s / 1h 27m 34s | 3.3x faster, 11% less compute  |
-| Large change   | 43m 28s / 1h 6m 25s  | 7m 39s / 44m 26s    | 5.7x faster, 33% less compute  |
-| Feature change | 43m 29s / 47m 8s     | 4m 4s / 21m 22s     | 10.7x faster, 55% less compute |
+| Scenario             | Blacksmith            | Nx Cloud             | Difference                        |
+| -------------------- | --------------------- | -------------------- | --------------------------------- |
+| Full rebuild         | 46m 37s / 1h 38m 46s  | 14m 0s / 1h 27m 34s  | 3.3x faster, 11% less compute     |
+| Large change         | 43m 28s / 1h 6m 25s   | 7m 39s / 44m 26s     | 5.7x faster, 33% less compute     |
+| Feature change       | 43m 29s / 47m 8s      | 4m 4s / 21m 22s      | 10.7x faster, 55% less compute    |
+| **Weighted average** | **43m 34s / 51m 58s** | **4m 58s / 27m 16s** | **8.8x faster, 48% less compute** |
 
 Each cell is verification time followed by compute. Weighted by the same 80/17/3 mix:
 
